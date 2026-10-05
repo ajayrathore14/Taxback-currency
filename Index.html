@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sale Price Calculator</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#eef3f1;--card:#fff;--ink:#12302a;--mute:#5d746d;--line:#cfdcd7;--accent:#0f6b57}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1c19;--card:#17292550;--ink:#e6f1ed;--mute:#8fa8a0;--line:#2a423c;--accent:#4fc3a6}}
+:root[data-theme="dark"]{--bg:#0f1c19;--card:#172925;--ink:#e6f1ed;--mute:#8fa8a0;--line:#2a423c;--accent:#4fc3a6}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*:before,*:after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Georgia,"Times New Roman",serif;display:flex;justify-content:center;padding:24px 16px}
+main{width:100%;max-width:420px}
+h1{font-size:1.6rem;margin:8px 0 20px;font-weight:700}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px}
+label{display:block;font-size:.95rem;color:var(--mute);margin-bottom:6px}
+input,select{width:100%;font:inherit;font-size:1.3rem;padding:12px;border:1px solid var(--line);border-radius:8px;background:transparent;color:var(--ink)}
+input:focus,select:focus{outline:2px solid var(--accent);outline-offset:1px}
+.field{margin-bottom:16px}
+.row{display:flex;justify-content:space-between;padding:10px 0;border-top:1px solid var(--line);color:var(--mute)}
+.row b{color:var(--ink);font-weight:400}
+.final{margin-top:18px}
+.final div{display:flex;justify-content:space-between;align-items:baseline;padding:6px 0}
+.final span{color:var(--mute)}
+.final strong{font-size:2rem;color:var(--accent)}
+.final .gbp strong{font-size:1.5rem}
+table{width:100%;border-collapse:collapse;margin-top:16px;font-size:.9rem}td{padding:6px 4px;border-top:1px solid var(--line);color:var(--mute)}td:last-child{text-align:right}tr.on td{color:var(--accent);font-weight:700}
+small{display:block;margin-top:14px;color:var(--mute);font-size:.8rem}
+</style>
+</head>
+<body>
+<main>
+<h1>Spain tax-back calculator</h1>
+<div class="card">
+  <div class="field">
+    <label for="vat">VAT rate of the goods</label>
+    <select id="vat"><option value="21">21% (general)</option><option value="10">10% (reduced)</option><option value="4">4% (super reduced)</option></select>
+  </div>
+  <div class="field">
+    <label for="price">Purchase total incl. VAT (€)</label>
+    <input id="price" type="number" inputmode="decimal" min="0" step="0.01" placeholder="500.00">
+  </div>
+  <div class="field">
+    <label for="rate">Exchange rate (1 € = ? £)</label>
+    <input id="rate" type="number" inputmode="decimal" min="0" step="0.0001" value="0.8531">
+  </div>
+  <div class="row"><span>Table band</span><b id="band">-</b></div>
+  <div class="row"><span>Refund rate</span><b id="pct">0%</b></div>
+  <div class="final">
+    <div><span>Tax back</span><strong id="eur">€0.00</strong></div>
+    <div class="gbp"><span>In pounds</span><strong id="gbp">£0.00</strong></div>
+    <div><span>Net price after refund</span><b id="net">€0.00</b></div>
+    <div><span>Net price in pounds</span><b id="netgbp">£0.00</b></div>
+  </div>
+  <small>Based on the Agencia Tributaria (AEAT) annex "Tablas de devolución del IVA a viajeros". These are the minimum refunds in that table; the amount you receive can differ by refund operator and payment method. Exchange rate: 0.8531 (1 Oct 2026), editable.</small>
+</div>
+</main>
+<script>
+var E=[[125,13],[150,16.5],[175,19.5],[200,22],[225,25],[250,28.5],[275,31.5],[300,34.5],[325,38],[350,41],[375,44],[400,48],[425,51],[450,53.5],[475,56.5],[500,60],[525,65.5],[550,69],[575,73],[600,75.5],[625,78.5],[650,82.5],[675,85.5],[700,89.5],[725,92],[750,95.5],[775,99],[800,102],[825,105.5],[850,109.5],[875,113.5],[900,116],[925,119.5],[950,122],[975,126],[1000,128.5]];
+var P=[[1500,13.7],[2000,14.05],[3000,14.5],[4000,14.9],[5000,15.3],[Infinity,15.7]];
+var f=function(n){return n.toLocaleString('en-GB')};
+function lookup(vat,p){
+  if(vat==='4')return{pct:2,band:'Any amount'};
+  if(vat==='10')return p<=220?{pct:5,band:'Up to €220'}:{pct:7,band:'Over €220'};
+  if(p<=100)return{pct:10.5,band:'Up to €100'};
+  var lo=100;
+  for(var i=0;i<E.length;i++){if(p<=E[i][0])return{eur:E[i][1],band:'€'+f(lo)+' – €'+f(E[i][0])};lo=E[i][0]}
+  for(var j=0;j<P.length;j++){if(p<=P[j][0])return{pct:P[j][1],band:P[j][0]===Infinity?'Over €5,000':'€'+f(lo)+' – €'+f(P[j][0])};lo=P[j][0]}
+}
+var price=document.getElementById('price'),rate=document.getElementById('rate'),vat=document.getElementById('vat');
+function calc(){
+  var p=parseFloat(price.value)||0,r=parseFloat(rate.value)||0,back=0,pct=0,band='-';
+  if(p>0){var x=lookup(vat.value,p);band=x.band;if(x.eur!==undefined){back=x.eur;pct=back/p*100}else{pct=x.pct;back=p*pct/100}}
+  document.getElementById('band').textContent=band;
+  document.getElementById('pct').textContent=pct.toFixed(2)+'%';
+  document.getElementById('eur').textContent='€'+back.toFixed(2);
+  document.getElementById('gbp').textContent='£'+(back*r).toFixed(2);
+  document.getElementById('net').textContent='€'+(p-back).toFixed(2);
+  document.getElementById('netgbp').textContent='£'+((p-back)*r).toFixed(2);
+}
+[price,rate].forEach(function(e){e.addEventListener('input',calc)});vat.addEventListener('change',calc);calc();
+</script>
+</body>
+</html>
